@@ -1,51 +1,50 @@
 class Note {
-  final int? id;
-  final String title;
-  final String content;
-  final String createdAt;
-  final bool isSynced;
-
-  Note({
+  const Note({
     this.id,
     required this.title,
-    required this.content,
-    required this.createdAt,
-    this.isSynced = false,
+    this.body = '',
+    required this.updatedAt,
+    this.dirty = false,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-      'createdAt': createdAt,
-      'isSynced': isSynced ? 1 : 0,
-    };
-  }
-
-  factory Note.fromMap(Map<String, dynamic> map) {
-    return Note(
-      id: map['id'] as int?,
-      title: map['title'] as String,
-      content: map['content'] as String,
-      createdAt: map['createdAt'] as String,
-      isSynced: (map['isSynced'] as int?) == 1,
-    );
-  }
+  final int? id;
+  final String title;
+  final String body;
+  final DateTime updatedAt;
+  final bool dirty;
 
   Note copyWith({
     int? id,
     String? title,
-    String? content,
-    String? createdAt,
-    bool? isSynced,
+    String? body,
+    DateTime? updatedAt,
+    bool? dirty,
   }) {
     return Note(
       id: id ?? this.id,
       title: title ?? this.title,
-      content: content ?? this.content,
-      createdAt: createdAt ?? this.createdAt,
-      isSynced: isSynced ?? this.isSynced,
+      body: body ?? this.body,
+      updatedAt: updatedAt ?? this.updatedAt,
+      dirty: dirty ?? this.dirty,
+    );
+  }
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'updated_at': updatedAt.toIso8601String(),
+        'dirty': dirty ? 1 : 0,
+      };
+
+  factory Note.fromMap(Map<String, Object?> map) {
+    return Note(
+      id: (map['id'] as num?)?.toInt(),
+      title: map['title'] as String? ?? '',
+      body: map['body'] as String? ?? '',
+      updatedAt: DateTime.tryParse(map['updated_at'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      dirty: ((map['dirty'] as num?)?.toInt() ?? 0) == 1,
     );
   }
 }

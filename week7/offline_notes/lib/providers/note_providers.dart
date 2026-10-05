@@ -2,4 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/note_repository.dart';
 
-final noteRepositoryProvider = Provider((ref) => NoteRepository());
+final noteRepositoryProvider = Provider<NoteRepository>((ref) {
+  return NoteRepository();
+});
+

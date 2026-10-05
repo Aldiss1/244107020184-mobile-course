@@ -1,25 +1,72 @@
+import 'package:sqflite/sqflite.dart';
 import '../local/db.dart';
 import '../local/note.dart';
 
 class NoteRepository {
-  final DatabaseHelper _dbHelper;
+  NoteRepository({Future<Database> Function()? openDb})
+      : _openDb = openDb ?? openNotesDb;
 
-  NoteRepository({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+  final Future<Database> Function() _openDb;
 
   Future<List<Note>> fetchNotes() async {
-    return await _dbHelper.getAllNotes();
+    final db = await _openDb();
+    final rows = await db.query('notes', orderBy: 'updated_at DESC');
+    return rows.map(Note.fromMap).toList();
   }
 
-  Future<int> addNote(Note note) async {
-    return await _dbHelper.insertNote(note);
+  Future<Note?> getNoteById(int id) async {
+    final db = await _openDb();
+    final rows = await db.query(
+      'notes',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : Note.fromMap(rows.first);
   }
 
-  Future<int> updateNote(Note note) async {
-    return await _dbHelper.updateNote(note);
+  Future<Note> addNote({required String title, String body = ''}) async {
+    final db = await _openDb();
+    final note = Note(
+      title: title,
+      body: body,
+      updatedAt: DateTime.now(),
+      dirty: true,
+    );
+    final id = await db.insert('notes', note.toMap());
+    return note.copyWith(id: id);
   }
 
-  Future<int> deleteNote(int id) async {
-    return await _dbHelper.deleteNote(id);
+  Future<void> updateNote(Note note) async {
+    if (note.id == null) {
+      throw ArgumentError('Catatan belum memiliki id');
+    }
+    final db = await _openDb();
+    final updated = note.copyWith(updatedAt: DateTime.now(), dirty: true);
+    await db.update(
+      'notes',
+      updated.toMap(),
+      where: 'id = ?',
+      whereArgs: [note.id],
+    );
+  }
+
+  Future<void> deleteNote(int id) async {
+    final db = await _openDb();
+    await db.delete('notes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> countDirty() async {
+    final db = await _openDb();
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) AS c FROM notes WHERE dirty = 1',
+    );
+    return (rows.first['c'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> markAllSynced() async {
+    final db = await _openDb();
+    await db.update('notes', {'dirty': 0}, where: 'dirty = 1');
   }
 }
+

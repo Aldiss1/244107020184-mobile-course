@@ -1,74 +1,28 @@
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-import 'note.dart';
 
-class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._init();
-  static Database? _database;
-
-  DatabaseHelper._init();
-
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('notes.db');
-    return _database!;
-  }
-
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
-  }
-
-  Future<void> _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        isSynced INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
-  }
-
-  Future<int> insertNote(Note note) async {
-    final db = await instance.database;
-    return await db.insert('notes', note.toMap());
-  }
-
-  Future<List<Note>> getAllNotes() async {
-    final db = await instance.database;
-    final result = await db.query('notes', orderBy: 'id DESC');
-    return result.map((json) => Note.fromMap(json)).toList();
-  }
-
-  Future<int> updateNote(Note note) async {
-    final db = await instance.database;
-    return await db.update(
-      'notes',
-      note.toMap(),
-      where: 'id = ?',
-      whereArgs: [note.id],
-    );
-  }
-
-  Future<int> deleteNote(int id) async {
-    final db = await instance.database;
-    return await db.delete(
-      'notes',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<void> close() async {
-    final db = await instance.database;
-    db.close();
-  }
+Future<Database> openNotesDb() async {
+  final dir = await getDatabasesPath();
+  return openDatabase(
+    p.join(dir, 'offline_notes.db'),
+    version: 1,
+    onCreate: (db, version) async {
+      await db.execute('''
+        CREATE TABLE notes(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL,
+          dirty INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE cached_posts(
+          id INTEGER PRIMARY KEY,
+          payload TEXT NOT NULL,
+          cached_at TEXT NOT NULL
+        )
+      ''');
+    },
+  );
 }
