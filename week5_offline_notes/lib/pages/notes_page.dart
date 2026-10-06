@@ -5,6 +5,7 @@ import '../data/local/note.dart';
 import '../data/sync.dart';
 import '../providers/note_providers.dart';
 import '../widgets/note_form_dialog.dart';
+import '../widgets/note_tile.dart';
 import 'posts_page.dart';
 import 'settings_page.dart';
 
@@ -92,36 +93,14 @@ class NotesPage extends ConsumerWidget {
                 itemCount: notes.length,
                 itemBuilder: (context, index) {
                   final note = notes[index];
-                  return ListTile(
-                    title: Text(note.title),
-                    subtitle: Text(
-                      note.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (note.dirty)
-                          const Padding(
-                            padding: EdgeInsets.only(right: 8.0),
-                            child: Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 18,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () {
-                            if (note.id != null) {
-                              ref.read(noteActionsProvider).delete(note.id!);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
+                  return NoteTile(
+                    note: note,
                     onTap: () => _openForm(context, ref, note),
+                    onDelete: () {
+                      if (note.id != null) {
+                        ref.read(noteActionsProvider).delete(note.id!);
+                      }
+                    },
                   );
                 },
               ),
