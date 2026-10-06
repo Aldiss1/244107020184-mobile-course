@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'pages/settings_page.dart';
+
+import 'pages/notes_page.dart';
 import 'providers/prefs_providers.dart';
 
 void main() {
@@ -27,7 +28,7 @@ class OfflineNotesApp extends ConsumerWidget {
         brightness: Brightness.dark,
       ),
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-      home: const SettingsPage(), // diganti NotesPage pada Praktikum 3
+      home: const NotesPage(),
     );
   }
 }
