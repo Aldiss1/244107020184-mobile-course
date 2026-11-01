@@ -36,6 +36,19 @@ void main() {
     });
   });
 
+  group('UserProfile', () {
+    test('membaca field dan menyusun nama lengkap', () {
+      final p = UserProfile.fromJson({
+        'firstName': 'Emily',
+        'lastName': 'Johnson',
+        'email': 'emily@x.com',
+        'image': 'https://example.com/i.png',
+      });
+      expect(p.fullName, 'Emily Johnson');
+      expect(p.email, 'emily@x.com');
+    });
+  });
+
   group('auth dummyjson', () {
     test('login mengembalikan sepasang token', () async {
       final repo = AuthRepository(

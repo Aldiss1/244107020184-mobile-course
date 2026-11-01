@@ -13,6 +13,7 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final push = ref.watch(pushServiceProvider);
+    final profile = ref.watch(userProfileProvider).value;
 
     return Scaffold(
       appBar: AppBar(
@@ -33,6 +34,14 @@ class HomePage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(profile?.fullName ?? 'Mahasiswa'),
+              subtitle: Text(profile?.email ?? 'Profil belum dimuat'),
+            ),
+          ),
+          const SizedBox(height: 16),
           ValueListenableBuilder<PushSnapshot>(
             valueListenable: push.snapshot,
             builder: (context, snap, _) => _StatusCard(snapshot: snap),

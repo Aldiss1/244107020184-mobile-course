@@ -23,6 +23,19 @@ final authStateProvider = AsyncNotifierProvider<AuthNotifier, bool>(
   AuthNotifier.new,
 );
 
+/// Profil user yang sedang login (bukti token Bearer bekerja).
+/// `null` bila tidak login atau fetch gagal — UI memakai sapaan netral.
+final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final loggedIn = await ref.watch(authStateProvider.future);
+  if (!loggedIn) return null;
+  try {
+    final res = await ref.watch(apiClientProvider).get<dynamic>('/users/me');
+    return UserProfile.fromJson(res.data as Map<String, dynamic>);
+  } catch (_) {
+    return null;
+  }
+});
+
 class AuthNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {

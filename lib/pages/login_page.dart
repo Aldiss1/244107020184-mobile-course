@@ -13,13 +13,13 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController(text: 'mahasiswa@polinema.ac.id');
-  final _password = TextEditingController(text: 'rahasia123');
+  final _username = TextEditingController(text: 'emilys');
+  final _password = TextEditingController(text: 'emilyspass');
   bool _obscure = true;
 
   @override
   void dispose() {
-    _email.dispose();
+    _username.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -29,7 +29,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     FocusScope.of(context).unfocus();
     await ref
         .read(authStateProvider.notifier)
-        .login(_email.text.trim(), _password.text);
+        .login(_username.text.trim(), _password.text);
     // Navigasi tidak dilakukan manual: `redirect` pada GoRouter yang
     // memindahkan pengguna begitu authStateProvider bernilai true.
   }
@@ -67,19 +67,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 32),
                     TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _username,
                       textInputAction: TextInputAction.next,
                       enabled: !isLoading,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.alternate_email),
+                        labelText: 'Username',
+                        prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
                         final text = value?.trim() ?? '';
-                        if (text.isEmpty) return 'Email wajib diisi';
-                        if (!text.contains('@')) return 'Format email salah';
+                        if (text.isEmpty) return 'Username wajib diisi';
                         return null;
                       },
                     ),

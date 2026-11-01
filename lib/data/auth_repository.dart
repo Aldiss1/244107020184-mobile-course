@@ -23,6 +23,15 @@ class UserProfile {
   final String image;
 
   String get fullName => '$firstName $lastName';
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      firstName: json['firstName'] as String,
+      lastName: json['lastName'] as String,
+      email: json['email'] as String,
+      image: json['image'] as String,
+    );
+  }
 }
 
 /// Auth provider berbasis API dummyjson.com (https://dummyjson.com).
