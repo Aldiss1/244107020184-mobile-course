@@ -94,6 +94,7 @@ Dio dioCanned(
 
 /// FlutterSecureStorage palsu berbasis map, supaya TokenStore asli bisa
 /// diuji tanpa Keychain.
+```dart
 class FakeSecureStorage extends FlutterSecureStorage {
   final Map<String, String> map = {};
 
