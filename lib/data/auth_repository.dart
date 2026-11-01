@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 /// Hasil login: sepasang token yang harus disimpan di secure storage.
 class AuthSession {
   const AuthSession({required this.access, required this.refresh});
@@ -6,42 +8,86 @@ class AuthSession {
   final String refresh;
 }
 
-/// Mock auth provider.
+/// Profil user dari `GET /users/me` (bukti token Bearer bekerja).
+class UserProfile {
+  const UserProfile({
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.image,
+  });
+
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String image;
+
+  String get fullName => '$firstName $lastName';
+}
+
+/// Auth provider berbasis API dummyjson.com (https://dummyjson.com).
 ///
-/// Titik migrasi ke Firebase Auth: ganti isi [login] dengan
-/// `FirebaseAuth.instance.signInWithEmailAndPassword(...)` lalu ambil
-/// `await user.getIdToken()` sebagai access token. Bentuk [AuthSession] dan
-/// seluruh lapisan di atasnya (TokenStore, Dio interceptor, AuthNotifier)
-/// tidak perlu berubah.
+/// Memakai **Dio polos** (tanpa interceptor refresh): endpoint
+/// `/auth/refresh` sendiri tidak boleh lewat interceptor, kalau tidak
+/// 401 pada refresh bisa memicu loop tukar-token. Dio ber-interceptor
+/// (lihat `api_client.dart`) memanggil [refresh] dari luar.
 class AuthRepository {
-  AuthRepository({this.latency = const Duration(milliseconds: 400)});
+  AuthRepository({Dio? dio})
+    : _dio = dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: 'https://dummyjson.com',
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 10),
+            ),
+          );
 
-  /// Dikurangi di unit test supaya cepat.
-  final Duration latency;
+  final Dio _dio;
 
+  /// `POST /auth/login` -> sepasang token.
+  ///
+  /// HTTP 400 (kredensial salah) diterjemahkan jadi [AuthException] supaya
+  /// UI menampilkan kalimat ramah; error jaringan diteruskan apa adanya
+  /// (DioException) agar `friendlyError` memberi pesan yang tepat.
   Future<AuthSession> login({
-    required String email,
+    required String username,
     required String password,
   }) async {
-    await Future<void>.delayed(latency);
-    if (!email.contains('@') || password.length < 6) {
-      throw const AuthException('Email atau kata sandi tidak valid');
+    try {
+      final res = await _dio.post<dynamic>(
+        '/auth/login',
+        data: {'username': username, 'password': password},
+      );
+      return _sessionFrom(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw const AuthException('Username atau kata sandi salah.');
+      }
+      rethrow;
     }
-    // Simulasi JWT (header.payload.signature). Jangan pernah mem-parse JWT
-    // secara manual untuk keputusan keamanan — verifikasi selalu di server.
-    return AuthSession(
-      access: 'mock-access-for-$email',
-      refresh: 'mock-refresh-for-$email',
-    );
   }
 
-  /// Menukar refresh token dengan access token baru.
-  Future<String> refresh(String refreshToken) async {
-    await Future<void>.delayed(latency);
-    if (refreshToken.isEmpty) {
-      throw const AuthException('Refresh token hilang');
+  /// `POST /auth/refresh` -> pasangan token **baru** (access + refresh).
+  ///
+  /// Semua kegagalan berarti refresh token sudah tidak bisa dipakai:
+  /// pengguna wajib login ulang.
+  Future<AuthSession> refresh(String refreshToken) async {
+    try {
+      final res = await _dio.post<dynamic>(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+      return _sessionFrom(res.data as Map<String, dynamic>);
+    } on DioException {
+      throw const AuthException('Refresh token tidak valid. Silakan masuk kembali.');
     }
-    return 'mock-access-renewed-${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  AuthSession _sessionFrom(Map<String, dynamic> json) {
+    return AuthSession(
+      access: json['accessToken'] as String,
+      refresh: json['refreshToken'] as String,
+    );
   }
 }
 

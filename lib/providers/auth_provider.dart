@@ -30,12 +30,12 @@ class AuthNotifier extends AsyncNotifier<bool> {
     return token != null && token.isNotEmpty;
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String username, String password) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final session = await ref
           .read(authRepositoryProvider)
-          .login(email: email, password: password);
+          .login(username: username, password: password);
       await ref
           .read(tokenStoreProvider)
           .save(access: session.access, refresh: session.refresh);

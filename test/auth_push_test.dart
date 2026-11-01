@@ -1,27 +1,12 @@
+import 'package:campus_notify/data/api_client.dart';
 import 'package:campus_notify/data/api_errors.dart';
 import 'package:campus_notify/data/auth_repository.dart';
+import 'package:campus_notify/data/token_store.dart';
 import 'package:campus_notify/messaging/route_parser.dart';
 import 'package:campus_notify/routes.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-/// Token store palsu: meniru kontrak TokenStore tanpa menyentuh Keychain.
-class FakeTokenStore {
-  String? access;
-  String? refresh;
-
-  void save({required String access, required String refresh}) {
-    this.access = access;
-    this.refresh = refresh;
-  }
-
-  void clear() {
-    access = null;
-    refresh = null;
-  }
-
-  bool get hasSession => access != null && access!.isNotEmpty;
-}
+import 'fakes.dart';
 
 void main() {
   group('routeFromMessage', () {
@@ -51,52 +36,105 @@ void main() {
     });
   });
 
-  group('sesi & refresh', () {
-    test('login menyimpan access + refresh', () async {
-      final store = FakeTokenStore();
-      final session = await AuthRepository(
-        latency: Duration.zero,
-      ).login(email: 'mahasiswa@polinema.ac.id', password: 'rahasia123');
-
-      store.save(access: session.access, refresh: session.refresh);
-
-      expect(store.hasSession, isTrue);
-      expect(store.refresh, isNotEmpty);
-    });
-
-    test('kredensial tidak valid ditolak', () async {
-      final repo = AuthRepository(latency: Duration.zero);
-      expect(
-        () => repo.login(email: 'tanpa-at', password: 'rahasia123'),
-        throwsA(isA<AuthException>()),
+  group('auth dummyjson', () {
+    test('login mengembalikan sepasang token', () async {
+      final repo = AuthRepository(
+        dio: dioCanned((_) => {'accessToken': 'ACC', 'refreshToken': 'REF'}),
       );
-      expect(
-        () => repo.login(email: 'a@b.c', password: '123'),
-        throwsA(isA<AuthException>()),
+      final session =
+          await repo.login(username: 'emilys', password: 'emilyspass');
+      expect(session.access, 'ACC');
+      expect(session.refresh, 'REF');
+    });
+
+    test('login 400 melempar AuthException dengan pesan ramah', () async {
+      final repo = AuthRepository(
+        dio: dioCanned(
+          (_) => {'message': 'Invalid credentials'},
+          status: 400,
+        ),
       );
-    });
-
-    test('refresh berhasil menghasilkan access token baru', () async {
-      final repo = AuthRepository(latency: Duration.zero);
-      final renewed = await repo.refresh('mock-refresh');
-      expect(renewed, startsWith('mock-access-renewed-'));
-    });
-
-    test('refresh kosong -> sesi dibersihkan dan wajib login ulang', () async {
-      final store = FakeTokenStore()
-        ..access = 'mock-access'
-        ..refresh = '';
-
-      var needsLogin = false;
+      Object? caught;
       try {
-        await AuthRepository(latency: Duration.zero).refresh(store.refresh!);
-      } catch (_) {
-        store.clear();
-        needsLogin = true;
+        await repo.login(username: 'x', password: 'y');
+      } catch (e) {
+        caught = e;
       }
+      expect(caught, isA<AuthException>());
+      expect(caught.toString(), 'Username atau kata sandi salah.');
+    });
 
-      expect(needsLogin, isTrue);
-      expect(store.hasSession, isFalse);
+    test('refresh mengembalikan pasangan token baru', () async {
+      final repo = AuthRepository(
+        dio: dioCanned(
+          (_) => {'accessToken': 'ACC2', 'refreshToken': 'REF2'},
+        ),
+      );
+      final session = await repo.refresh('REF');
+      expect(session.access, 'ACC2');
+      expect(session.refresh, 'REF2');
+    });
+
+    test('refresh 400 melempar AuthException (paksa login ulang)', () async {
+      final repo = AuthRepository(
+        dio: dioCanned((_) => {'message': 'bad'}, status: 400),
+      );
+      expect(
+        () => repo.refresh('REF'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('network down diteruskan sebagai DioException (bukan AuthException)',
+        () async {
+      final repo = AuthRepository(
+        dio: Dio(BaseOptions(baseUrl: 'https://dummyjson.com'))
+          ..httpClientAdapter = CannedAdapter((options) async {
+            throw DioException(
+              requestOptions: options,
+              type: DioExceptionType.connectionError,
+            );
+          }),
+      );
+      expect(
+        () => repo.login(username: 'x', password: 'y'),
+        throwsA(isA<DioException>()),
+      );
+    });
+
+    test('interceptor: 401 -> refresh -> retry sekali -> sukses', () async {
+      final store = TokenStore(storage: FakeSecureStorage());
+      await store.save(access: 'expired', refresh: 'REF');
+      final authDio = dioCanned(
+        (path) =>
+            path.contains('/auth/refresh')
+                ? {'accessToken': 'NEW', 'refreshToken': 'REF2'}
+                : {},
+      );
+      var meCalls = 0;
+      final api = buildApiClient(store, AuthRepository(dio: authDio))
+        ..httpClientAdapter = CannedAdapter((options) async {
+          meCalls++;
+          if (meCalls == 1) {
+            throw DioException(
+              requestOptions: options,
+              type: DioExceptionType.badResponse,
+              response: Response<dynamic>(
+                requestOptions: options,
+                statusCode: 401,
+                data: {'message': 'expired'},
+              ),
+            );
+          }
+          return jsonBody({'id': 1});
+        });
+
+      final res = await api.get<dynamic>('/users/me');
+
+      expect(res.statusCode, 200);
+      expect(meCalls, 2);
+      expect(await store.readAccess(), 'NEW');
+      expect(await store.readRefresh(), 'REF2');
     });
   });
 

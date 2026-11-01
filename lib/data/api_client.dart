@@ -17,7 +17,9 @@ const String _retriedKey = 'retried_after_refresh';
 Dio buildApiClient(TokenStore store, AuthRepository auth) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'https://example-campus-api.test',
+      // API kampus digantikan dummyjson.com: login, refresh, dan profil
+      // user semuanya endpoint publik yang terdokumentasi.
+      baseUrl: 'https://dummyjson.com',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ),
@@ -50,7 +52,9 @@ Dio buildApiClient(TokenStore store, AuthRepository auth) {
 
         try {
           final renewed = await auth.refresh(refreshToken);
-          await store.save(access: renewed, refresh: refreshToken);
+          // Refresh token ikut berotasi (dummyjson menerbitkan pasangan
+          // baru), jadi keduanya disimpan ke secure storage.
+          await store.save(access: renewed.access, refresh: renewed.refresh);
 
           options.extra[_retriedKey] = true;
           // onRequest akan menimpa header Authorization dengan token baru.
