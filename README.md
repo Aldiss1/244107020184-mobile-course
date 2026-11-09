@@ -33,26 +33,32 @@ sering salah di aplikasi mobile:
 ```
 lib/
 ├── main.dart                     # boot Firebase (guard) + pilih jalur push
-├── routes.dart                   # SATU sumber path rute
+├── domain/
+│   ├── routes.dart               # SATU sumber path rute
+│   └── route_parser.dart         # routeFromMessage() — fungsi murni
 ├── data/
 │   ├── token_store.dart          # secure storage saja
-│   ├── auth_repository.dart      # mock auth, titik migrasi ke Firebase Auth
+│   ├── auth_repository.dart      # auth dummyjson, titik migrasi ke API kampus
 │   ├── api_client.dart           # Dio + refresh-once interceptor
-│   └── api_errors.dart           # DioException -> pesan ramah pengguna
-├── providers/
-│   ├── auth_provider.dart        # AsyncNotifier<bool> status login
-│   ├── router_provider.dart      # GoRouter + redirect guard
-│   └── push_provider.dart        # provider PushService + status boot Firebase
-├── messaging/
+│   ├── api_errors.dart           # DioException -> pesan ramah pengguna
 │   ├── push_service.dart         # permission, token, topic, 3 handler
 │   ├── native_push_bridge.dart   # jembatan push iOS Simulator
-│   └── route_parser.dart         # routeFromMessage() — fungsi murni
-└── pages/
-    ├── splash_page.dart
-    ├── login_page.dart
-    ├── home_page.dart
-    ├── announcement_page.dart    # target deep link /pengumuman/:id
-    └── debug_page.dart           # bukti token terpotong + status push
+│   └── notification_store.dart   # daftar notifikasi in-app (file JSON)
+├── presentation/
+│   ├── providers/
+│   │   ├── auth_provider.dart    # AsyncNotifier<bool> status login
+│   │   ├── router_provider.dart  # GoRouter + redirect guard
+│   │   ├── push_provider.dart    # provider PushService + status boot Firebase
+│   │   └── notification_provider.dart
+│   └── pages/
+│       ├── splash_page.dart
+│       ├── login_page.dart
+│       ├── home_page.dart
+│       ├── notifications_page.dart
+│       ├── announcement_page.dart # target deep link /pengumuman/:id
+│       ├── debug_page.dart        # bukti token terpotong + status push
+│       └── ...                   # slide materi SOLID & Layer-first
+```
 
 ios/Runner/AppDelegate.swift      # bridge EventChannel/MethodChannel (simulator)
 tool/
@@ -219,14 +225,23 @@ Bukti gambar disimpan di `screenshots/`:
 
 ## Keputusan desain yang perlu bisa dijelaskan saat demo
 
-| Pertanyaan | Jawaban singkat di kode |
-|---|---|
-| Kenapa bukan `SharedPreferences`? | Tidak terenkripsi. Di Android file XML-nya bisa dibaca pada perangkat root/backup; di iOS plist tidak dilindungi Keychain. Lihat `token_store.dart`. |
-| Kenapa refresh hanya sekali? | Mencegah loop tak berujung saat backend terus membalas 401. Ditandai lewat `extra['retried_after_refresh']` di `api_client.dart`. |
-| Kenapa background handler top-level? | Berjalan di isolate terpisah yang dibuat native; tidak ada `BuildContext`/`ProviderContainer`. Lihat `@pragma('vm:entry-point')` di `push_service.dart`. |
-| Kenapa foreground butuh local notification? | Pada state foreground, sistem **tidak** menampilkan banner untuk payload `notification`. Harus manual. |
-| Topik vs token? | Topik untuk broadcast (semua mahasiswa, satu kelas, satu UKM). Token untuk pesan personal (nilai, tagihan). |
-| Kenapa `routeFromMessage` dipisah? | Supaya logika pemetaan payload bisa diuji tanpa Firebase. Lihat `test/auth_push_test.dart`. |
+Setiap keputusan signifikan didokumentasikan lengkap sebagai Architecture
+Decision Record di [`docs/decisions/`](docs/decisions/) — konteks, alternatif
+yang ditolak, dan konsekuensinya. Ringkasannya:
+
+| Pertanyaan | Jawaban singkat di kode | ADR |
+|---|---|---|
+| Kenapa bukan `SharedPreferences`? | Tidak terenkripsi. Di Android file XML-nya bisa dibaca pada perangkat root/backup; di iOS plist tidak dilindungi Keychain. Lihat `token_store.dart`. | [ADR-001](docs/decisions/ADR-001-secure-storage-untuk-token.md) |
+| Kenapa refresh hanya sekali? | Mencegah loop tak berujung saat backend terus membalas 401. Ditandai lewat `extra['retried_after_refresh']` di `api_client.dart`. | [ADR-002](docs/decisions/ADR-002-refresh-once-interceptor.md) |
+| Kenapa background handler top-level? | Berjalan di isolate terpisah yang dibuat native; tidak ada `BuildContext`/`ProviderContainer`. Lihat `@pragma('vm:entry-point')` di `push_service.dart`. | — |
+| Kenapa foreground butuh local notification? | Pada state foreground, sistem **tidak** menampilkan banner untuk payload `notification`. Harus manual. | — |
+| Topik vs token? | Topik untuk broadcast (semua mahasiswa, satu kelas, satu UKM). Token untuk pesan personal (nilai, tagihan). | — |
+| Kenapa `routeFromMessage` dipisah? | Supaya logika pemetaan payload bisa diuji tanpa Firebase. Lihat `test/auth_push_test.dart`. | [ADR-006](docs/decisions/ADR-006-route-parser-murni.md) |
+| Kenapa rute pusat di `routes.dart`? | GoRouter dan payload FCM memakai konstanta yang sama; deep link tidak bisa "nyasar". | [ADR-003](docs/decisions/ADR-003-single-source-rute.md) |
+| Kenapa ada dua jalur push? | iOS Simulator tidak punya APNs token; jembatan native membuat 3 app state tetap bisa diuji. | [ADR-004](docs/decisions/ADR-004-dua-jalur-push.md) |
+| Kenapa berlapis `data/domain/presentation`? | Dependensi satu arah, logika murni teruji tanpa perangkat — contoh hidup materi Minggu 7. | [ADR-005](docs/decisions/ADR-005-arsitektur-berlapis-riverpod.md) |
+
+Laporan proyek lengkap (format Word): `docs/Laporan_Campus_Notify_v2.docx`.
 
 ---
 
@@ -269,7 +284,7 @@ proyek ini dibangun ulang di mesin lain:
 Waktu build pertama ±12 menit karena Gradle harus mengunduh platform SDK 36
 dan CMake 3.22.1. Build berikutnya jauh lebih cepat.
 
-Test yang tersedia (17):
+Test yang tersedia (34):
 
 - `routeFromMessage` — rute kosong, tanpa garis miring, fallback ke `id`, trim spasi
 - sesi — login menyimpan token, kredensial invalid ditolak, refresh menghasilkan token baru, refresh kosong memaksa login ulang
