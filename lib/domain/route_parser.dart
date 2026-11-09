@@ -1,4 +1,4 @@
-import '../routes.dart';
+import 'routes.dart';
 
 /// Mengubah `data` payload FCM menjadi path rute yang valid.
 ///

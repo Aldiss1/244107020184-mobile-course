@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLID: Lima Prinsip dalam Bahasa Sehari-hari — Pemrograman Mobile · Minggu 7</title>
+<style>
+  /* Palet diambil dari deck asli (Minggu 11_Clean_Architecture_Flutter.pptx).
+     Ubah di sini bila slide berikutnya harus konsisten. */
+  :root {
+    --navy: #16303f;
+    --teal: #3d7c8c;
+    --slate: #7b8b96;
+    --brick: #c0563a;
+    --card: #edf1f4;
+    --paper: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0d1b23;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Panggung 16:9. Semua ukuran memakai cqw (1% lebar panggung)
+     sehingga proporsi tetap sama di 1280px maupun 1920px. */
+  .stage {
+    container-type: size;
+    position: relative;
+    aspect-ratio: 16 / 9;
+    width: min(100vw, 177.7778vh);
+    margin: 0 auto;
+    padding: 4.2cqw 5.9cqw 3.2cqw;
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  h1 {
+    margin: 0;
+    text-align: center;
+    color: var(--navy);
+    font-size: 3.15cqw;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Satu grid untuk header kolom + lima baris, supaya kolom
+     benar-benar sejajar tanpa lebar manual. */
+  .table {
+    margin-top: 2.4cqw;
+    display: grid;
+    grid-template-columns: 33% 27.5% 1fr;
+    /* Lima baris berbagi sisa tinggi panggung, jadi tidak pernah meluber. */
+    grid-template-rows: auto repeat(5, minmax(0, 1fr));
+    column-gap: 2.6%;
+    row-gap: 0;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .head {
+    align-self: start;
+    color: var(--slate);
+    font-size: 1.24cqw;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .head.is-alert { color: var(--brick); }
+
+  .principle {
+    display: flex;
+    align-items: center;
+    gap: 1.75cqw;
+  }
+
+  .letter {
+    flex: 0 0 auto;
+    width: 5.9cqw;
+    height: 5.9cqw;
+    border-radius: 50%;
+    background: var(--teal);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 2.55cqw;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .principle h2 {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1.62cqw;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .meaning {
+    align-self: center;
+    color: #24333d;
+    font-size: 1.42cqw;
+    line-height: 1.4;
+  }
+
+  .symptom {
+    align-self: center;
+    background: var(--card);
+    border-radius: 0.75cqw;
+    padding: 1.55cqw 1.6cqw;
+    color: #24333d;
+    font-size: 1.34cqw;
+    line-height: 1.4;
+  }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    color: var(--slate);
+    font-size: 0.98cqw;
+    letter-spacing: 0.01em;
+  }
+
+  /* Saat dicetak: satu halaman, tanpa margin browser. */
+  @page { size: 16in 9in; margin: 0; }
+
+  @media print {
+    html, body { background: #fff; }
+    .stage {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      box-shadow: none;
+    }
+  }
+
+  @media screen {
+    .stage {
+      box-shadow: 0 0.6vw 3vw rgba(0, 0, 0, 0.45);
+    }
+  }
+</style>
+</head>
+<body>
+  <section class="stage">
+    <h1>SOLID: Lima Prinsip dalam Bahasa Sehari-hari</h1>
+
+    <div class="table">
+      <div class="head" aria-hidden="true"></div>
+      <div class="head">Arti praktis</div>
+      <div class="head is-alert">Gejala pelanggaran di Flutter</div>
+
+      <div class="principle">
+        <span class="letter">S</span>
+        <h2>Single Responsibility</h2>
+      </div>
+      <p class="meaning">Satu kelas, satu alasan untuk berubah</p>
+      <p class="symptom">Widget 400 baris: fetch API + parsing JSON + format tanggal</p>
+
+      <div class="principle">
+        <span class="letter">O</span>
+        <h2>Open/Closed</h2>
+      </div>
+      <p class="meaning">Tambah perilaku lewat ekstensi, bukan mengedit kode lama</p>
+      <p class="symptom">Sumber data baru memaksa edit widget yang sudah jalan</p>
+
+      <div class="principle">
+        <span class="letter">L</span>
+        <h2>Liskov Substitution</h2>
+      </div>
+      <p class="meaning">Pengganti harus bisa menggantikan aslinya tanpa merusak</p>
+      <p class="symptom">Repository palsu melempar error yang tak pernah dilempar aslinya</p>
+
+      <div class="principle">
+        <span class="letter">I</span>
+        <h2>Interface Segregation</h2>
+      </div>
+      <p class="meaning">Jangan paksa klien bergantung pada yang tak dipakai</p>
+      <p class="symptom">Satu AppRepository raksasa untuk auth + notes + push</p>
+
+      <div class="principle">
+        <span class="letter">D</span>
+        <h2>Dependency Inversion</h2>
+      </div>
+      <p class="meaning">Bergantung pada abstraksi, bukan implementasi</p>
+      <p class="symptom">Notifier memanggil Dio / sqflite langsung</p>
+    </div>
+
+    <footer>
+      <span>Pemrograman Mobile · Minggu 7 · Clean Architecture</span>
+      <span>6</span>
+    </footer>
+  </section>
+</body>
+</html>

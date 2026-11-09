@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../pages/announcement_page.dart';
 import '../pages/debug_page.dart';
 import '../pages/home_page.dart';
+import '../pages/layer_first_page.dart';
 import '../pages/login_page.dart';
+import '../pages/notifications_page.dart';
+import '../pages/solid_page.dart';
 import '../pages/splash_page.dart';
-import '../routes.dart';
+import '../../domain/routes.dart';
 import 'auth_provider.dart';
 
 /// Menjembatani perubahan status auth ke GoRouter tanpa membangun ulang router.
@@ -59,6 +62,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.debug,
         builder: (context, state) => const DebugPage(),
+      ),
+      GoRoute(
+        path: Routes.notifications,
+        builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: Routes.solid,
+        builder: (context, state) => const SolidPage(),
+      ),
+      GoRoute(
+        path: Routes.layerFirst,
+        builder: (context, state) => const LayerFirstPage(),
       ),
       GoRoute(
         path: Routes.announcementPattern,

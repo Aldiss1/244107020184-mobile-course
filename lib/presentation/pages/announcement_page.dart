@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../routes.dart';
+import '../../domain/routes.dart';
 
 class AnnouncementPage extends StatelessWidget {
   const AnnouncementPage({super.key, required this.id});

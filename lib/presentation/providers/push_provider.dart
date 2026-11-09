@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../messaging/push_service.dart';
+import '../../data/push_service.dart';
 
 /// Status boot Firebase, di-override dari `main()` setelah `initializeApp()`.
 class FirebaseBoot {

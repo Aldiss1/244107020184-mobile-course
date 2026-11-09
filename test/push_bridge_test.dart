@@ -1,6 +1,6 @@
-import 'package:campus_notify/messaging/native_push_bridge.dart';
-import 'package:campus_notify/messaging/route_parser.dart';
-import 'package:campus_notify/routes.dart';
+import 'package:campus_notify/data/native_push_bridge.dart';
+import 'package:campus_notify/domain/route_parser.dart';
+import 'package:campus_notify/domain/routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Menguji normalisasi payload yang dikirim `AppDelegate.swift`.

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../messaging/push_service.dart';
+import '../../data/push_service.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/push_provider.dart';
-import '../routes.dart';
+import '../../domain/routes.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -14,11 +15,21 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final push = ref.watch(pushServiceProvider);
     final profile = ref.watch(userProfileProvider).value;
+    final unread = ref.watch(notificationsProvider).length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Campus Notify'),
         actions: [
+          IconButton(
+            tooltip: 'Notifikasi',
+            onPressed: () => context.push(Routes.notifications),
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
           IconButton(
             tooltip: 'Debug push',
             onPressed: () => context.push(Routes.debug),
@@ -79,6 +90,34 @@ class HomePage extends ConsumerWidget {
                   title: const Text('Kelola langganan topik'),
                   subtitle: Text(kAnnouncementTopic),
                   onTap: () => _showTopicSheet(context, ref),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('Materi', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.school_outlined),
+                  title: const Text('SOLID: Lima Prinsip'),
+                  subtitle: const Text(
+                    'Minggu 7 · Clean Architecture — arah panah dependensi',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(Routes.solid),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.folder_outlined),
+                  title: const Text('Layer-first'),
+                  subtitle: const Text(
+                    'Struktur lib/ per layer: data, domain, presentation',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(Routes.layerFirst),
                 ),
               ],
             ),

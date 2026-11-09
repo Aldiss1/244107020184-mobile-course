@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../messaging/push_service.dart';
+import '../../data/push_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/push_provider.dart';
 
@@ -41,6 +41,11 @@ class DebugPage extends ConsumerWidget {
             ),
             if (snap.message != null)
               _Row(label: 'Catatan', value: snap.message!, mono: true),
+            _Row(
+              label: 'Kirim token',
+              value: snap.backendStatus ?? 'belum dicoba',
+              mono: true,
+            ),
             const SizedBox(height: 24),
             FilledButton.tonalIcon(
               onPressed: () => push.showLocal(
