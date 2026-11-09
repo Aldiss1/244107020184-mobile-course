@@ -41,6 +41,11 @@ class DebugPage extends ConsumerWidget {
             ),
             if (snap.message != null)
               _Row(label: 'Catatan', value: snap.message!, mono: true),
+            _Row(
+              label: 'Kirim token',
+              value: snap.backendStatus ?? 'belum dicoba',
+              mono: true,
+            ),
             const SizedBox(height: 24),
             FilledButton.tonalIcon(
               onPressed: () => push.showLocal(

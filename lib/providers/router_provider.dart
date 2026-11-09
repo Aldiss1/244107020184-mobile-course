@@ -6,6 +6,7 @@ import '../pages/announcement_page.dart';
 import '../pages/debug_page.dart';
 import '../pages/home_page.dart';
 import '../pages/login_page.dart';
+import '../pages/notifications_page.dart';
 import '../pages/splash_page.dart';
 import '../routes.dart';
 import 'auth_provider.dart';
@@ -59,6 +60,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.debug,
         builder: (context, state) => const DebugPage(),
+      ),
+      GoRoute(
+        path: Routes.notifications,
+        builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
         path: Routes.announcementPattern,

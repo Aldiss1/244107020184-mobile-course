@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'messaging/native_push_bridge.dart';
 import 'messaging/push_service.dart';
 import 'providers/auth_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/push_provider.dart';
 import 'providers/router_provider.dart';
 
@@ -56,6 +59,14 @@ class _CampusNotifyAppState extends ConsumerState<CampusNotifyApp> {
     final boot = ref.read(firebaseBootProvider);
 
     await push.initLocalNotifications();
+
+    // Daftar notifikasi in-app: muat sisa dari file, lalu sambungkan
+    // setiap notifikasi yang datang (tombol uji, FCM foreground, klik
+    // dari background/terminated) ke list + badge.
+    await ref.read(notificationsProvider.notifier).init();
+    push.onIncoming = (n) =>
+        unawaited(ref.read(notificationsProvider.notifier).add(n));
+
     push.attachNavigator(router.go);
 
     if (boot.ready) {
@@ -104,18 +115,23 @@ class _CampusNotifyAppState extends ConsumerState<CampusNotifyApp> {
 
       push.listenForeground(go: router.go);
 
-      final dio = ref.read(apiClientProvider);
+      final registrar = ref.read(deviceRegistrarProvider);
       await push.initToken(
         onToken: (token) async {
-          // Ganti baseUrl di api_client.dart dengan API kampus yang sebenarnya.
-          // Yang penting: token BENAR-BENAR dikirim, bukan hanya di-print.
-          try {
-            await dio.post<dynamic>(
-              '/devices',
-              data: {'fcm_token': token, 'platform': PushService.platformName},
+          // Token BENAR-BENAR dikirim ke backend, bukan hanya di-print.
+          // Endpoint bisa diarahkan lewat --dart-define=DEVICES_URL=...
+          final result = await registrar.register(
+            token: token,
+            platform: PushService.platformName,
+          );
+          push.setBackendStatus(result.shortLabel);
+          if (!result.ok) {
+            debugPrint(
+              '[FCM] token gagal didaftarkan ke ${registrar.url}: '
+              '${result.label}',
             );
-          } catch (error) {
-            debugPrint('[FCM] gagal kirim token ke backend: $error');
+          } else {
+            debugPrint('[FCM] token terdaftar di ${registrar.url}');
           }
         },
       );

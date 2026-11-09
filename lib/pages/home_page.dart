@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../messaging/push_service.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/push_provider.dart';
 import '../routes.dart';
 
@@ -14,11 +15,21 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final push = ref.watch(pushServiceProvider);
     final profile = ref.watch(userProfileProvider).value;
+    final unread = ref.watch(notificationsProvider).length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Campus Notify'),
         actions: [
+          IconButton(
+            tooltip: 'Notifikasi',
+            onPressed: () => context.push(Routes.notifications),
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
           IconButton(
             tooltip: 'Debug push',
             onPressed: () => context.push(Routes.debug),

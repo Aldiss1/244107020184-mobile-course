@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/api_client.dart';
 import '../data/auth_repository.dart';
+import '../data/device_registrar.dart';
 import '../data/token_store.dart';
+import 'notification_provider.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
 
@@ -17,6 +19,15 @@ final apiClientProvider = Provider<Dio>((ref) {
     ref.watch(authRepositoryProvider),
   );
 });
+
+/// Pengirim token FCM ke backend.
+///
+/// Endpoint diatur lewat `--dart-define=DEVICES_URL=...`; default-nya
+/// `https://dummyjson.com/devices` yang memang belum ada (404), sehingga
+/// aplikasi tidak berpura-pura berhasil.
+final deviceRegistrarProvider = Provider<DeviceRegistrar>(
+  (ref) => DeviceRegistrar(),
+);
 
 /// `true` bila ada access token di secure storage.
 final authStateProvider = AsyncNotifierProvider<AuthNotifier, bool>(
@@ -57,6 +68,9 @@ class AuthNotifier extends AsyncNotifier<bool> {
   }
 
   Future<void> logout() async {
+    // Notifikasi milik sesi yang berakhir: hapus supaya user berikutnya
+    // tidak melihat daftar lama, dan badge sistem ikut reset ke 0.
+    await ref.read(notificationsProvider.notifier).clearAll();
     await ref.read(tokenStoreProvider).clear();
     state = const AsyncData(false);
   }

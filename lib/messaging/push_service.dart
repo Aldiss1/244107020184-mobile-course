@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../data/notification_store.dart';
 import 'native_push_bridge.dart';
 import 'route_parser.dart';
 
@@ -74,6 +75,7 @@ class PushSnapshot {
     this.tokenPreview,
     this.topic = kAnnouncementTopic,
     this.permissionGranted = false,
+    this.backendStatus,
   });
 
   final PushStatus status;
@@ -86,6 +88,9 @@ class PushSnapshot {
   final String topic;
   final bool permissionGranted;
 
+  /// Hasil pengiriman token ke backend (null = belum dicoba).
+  final String? backendStatus;
+
   PushSnapshot copyWith({
     PushStatus? status,
     PushSource? source,
@@ -93,6 +98,7 @@ class PushSnapshot {
     String? tokenPreview,
     String? topic,
     bool? permissionGranted,
+    String? backendStatus,
   }) {
     return PushSnapshot(
       status: status ?? this.status,
@@ -101,6 +107,7 @@ class PushSnapshot {
       tokenPreview: tokenPreview ?? this.tokenPreview,
       topic: topic ?? this.topic,
       permissionGranted: permissionGranted ?? this.permissionGranted,
+      backendStatus: backendStatus ?? this.backendStatus,
     );
   }
 }
@@ -111,6 +118,11 @@ class PushService {
     : _local = local ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _local;
+
+  /// Satu-satunya pintu masuk notifikasi ke daftar in-app (Task: daftar
+  /// notifikasi). Dipasang oleh bootstrap `main.dart` agar [PushService]
+  /// tidak bergantung pada provider/UI.
+  void Function(StoredNotification)? onIncoming;
 
   /// Status reaktif untuk halaman Debug.
   final ValueNotifier<PushSnapshot> snapshot = ValueNotifier<PushSnapshot>(
@@ -137,6 +149,13 @@ class PushService {
       source: source,
       message: message,
     );
+  }
+
+  /// Mencatat hasil pendaftaran token ke backend agar terlihat di halaman
+  /// Debug — termasuk saat gagal, supaya penyebabnya tidak tersembunyi di
+  /// log saja.
+  void setBackendStatus(String? value) {
+    snapshot.value = snapshot.value.copyWith(backendStatus: value);
   }
 
   /// Menyiapkan channel + callback klik notifikasi lokal.
@@ -316,8 +335,14 @@ class PushService {
     required String title,
     required String body,
     required String route,
-  }) {
-    return _local.show(
+  }) async {
+    // Suara: di Android, channel `Importance.high` (initLocalNotifications)
+    // sudah memutar suara default sistem — `sound` sengaja TIDAK di-set
+    // eksplisit karena `RawResourceAndroidNotificationSound('default')`
+    // berisiko menunjuk resource app yang salah. Di iOS (v22), param
+    // `playSound` lama tidak ada lagi; `sound` yang dibiarkan null berarti
+    // suara default sistem — jadi keduanya sengaja dibiarkan default.
+    await _local.show(
       id: id,
       title: title,
       body: body,
@@ -333,11 +358,29 @@ class PushService {
       ),
       payload: route,
     );
+    // Setiap notifikasi yang ditampilkan ikut masuk daftar in-app.
+    onIncoming?.call(
+      StoredNotification(
+        id: '$id',
+        title: title,
+        body: body,
+        route: route,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Menghapus banner notifikasi lokal dari shade (dipanggil saat item
+  /// daftar dibaca, supaya banner yang masih tertinggal ikut hilang).
+  Future<void> dismissLocal(int id) async {
+    if (id <= 0) return;
+    await _local.cancel(id: id);
   }
 
   /// Foreground + klik dari background (jalur Firebase).
   void listenForeground({required void Function(String route) go}) {
     // Foreground: banner TIDAK muncul otomatis -> tampilkan manual.
+    // (`showLocal` sendiri memanggil onIncoming.)
     FirebaseMessaging.onMessage.listen((message) async {
       final route = routeFromMessage(message.data);
       await showLocal(
@@ -350,9 +393,21 @@ class PushService {
 
     // Background: banner ditampilkan sistem, klik masuk ke sini.
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      // Pesan diterima saat background: masuk daftar lalu buka rute.
+      onIncoming?.call(_fromRemote(message));
       go(routeFromMessage(message.data));
     });
   }
+
+  /// Konversi RemoteMessage ke item daftar (dipakai state background/
+  /// terminated, yang tidak melewati [showLocal]).
+  StoredNotification _fromRemote(RemoteMessage m) => StoredNotification(
+        id: '${m.hashCode.abs()}',
+        title: m.notification?.title ?? 'Pengumuman',
+        body: m.notification?.body ?? '',
+        route: routeFromMessage(m.data),
+        createdAt: DateTime.now(),
+      );
 
   /// Foreground + klik dari background (jalur jembatan native iOS).
   ///
@@ -374,6 +429,19 @@ class PushService {
             route: routeFromMessage(event.payload.data),
           );
         case BridgePushEventType.opened:
+          // Pesan diterima saat background: masuk daftar lalu buka rute.
+          onIncoming?.call(
+            StoredNotification(
+              id: '${event.payload.hashCode.abs()}',
+              title:
+                  event.payload.title.isEmpty
+                      ? 'Pengumuman'
+                      : event.payload.title,
+              body: event.payload.body,
+              route: routeFromMessage(event.payload.data),
+              createdAt: DateTime.now(),
+            ),
+          );
           go(routeFromMessage(event.payload.data));
         case BridgePushEventType.background:
           // Data-only di background: sistem tidak menampilkan apa pun.
@@ -389,6 +457,8 @@ class PushService {
   Future<void> handleTerminated(void Function(String route) go) async {
     final initial = await FirebaseMessaging.instance.getInitialMessage();
     if (initial != null) {
+      // Aplikasi diluncurkan dari notifikasi: masuk daftar lalu buka rute.
+      onIncoming?.call(_fromRemote(initial));
       go(routeFromMessage(initial.data));
     }
     _flushPendingRoute(go);
@@ -401,6 +471,15 @@ class PushService {
   }) async {
     final initial = await bridge.getInitialPayload();
     if (initial != null) {
+      onIncoming?.call(
+        StoredNotification(
+          id: '${initial.hashCode.abs()}',
+          title: initial.title.isEmpty ? 'Pengumuman' : initial.title,
+          body: initial.body,
+          route: routeFromMessage(initial.data),
+          createdAt: DateTime.now(),
+        ),
+      );
       go(routeFromMessage(initial.data));
     }
     _flushPendingRoute(go);

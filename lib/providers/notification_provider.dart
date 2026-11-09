@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/notification_store.dart';
+import '../services/app_badge.dart';
 
 /// Daftar notifikasi belum dibaca.
 ///
@@ -13,6 +17,14 @@ final notificationsProvider =
 
 class NotificationsNotifier extends Notifier<List<StoredNotification>> {
   NotificationStore? _store;
+
+  /// Dipakai tes: mengunci store dengan file di direktori temp supaya
+  /// [NotificationStore.create] (path_provider) tidak tersentuh.
+  @visibleForTesting
+  NotificationStore? get store => _store;
+
+  @visibleForTesting
+  set store(NotificationStore? value) => _store = value;
 
   @override
   List<StoredNotification> build() => const [];
@@ -34,6 +46,7 @@ class NotificationsNotifier extends Notifier<List<StoredNotification>> {
     }
     await _store!.add(n);
     state = _store!.items.value;
+    unawaited(AppBadge().setBadge(state.length));
   }
 
   Future<void> remove(String id) async {
@@ -41,6 +54,7 @@ class NotificationsNotifier extends Notifier<List<StoredNotification>> {
     if (store == null) return;
     await store.remove(id);
     state = store.items.value;
+    unawaited(AppBadge().setBadge(state.length));
   }
 
   Future<void> clearAll() async {
@@ -48,5 +62,6 @@ class NotificationsNotifier extends Notifier<List<StoredNotification>> {
     if (store == null) return;
     await store.clear();
     state = store.items.value;
+    unawaited(AppBadge().setBadge(state.length));
   }
 }
