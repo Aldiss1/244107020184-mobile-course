@@ -1,0 +1,11 @@
+{
+  "Simulator Target Bundle": "id.ac.polinema.campusNotify",
+  "aps": {
+    "alert": {
+      "title": "Notifikasi tanpa route",
+      "body": "Payload ini tidak punya data.route maupun data.id"
+    },
+    "sound": "default"
+  },
+  "gcm.message_id": "sim-malformed-0001"
+}

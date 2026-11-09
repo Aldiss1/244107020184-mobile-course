@@ -1,0 +1,13 @@
+{
+  "Simulator Target Bundle": "id.ac.polinema.campusNotify",
+  "aps": {
+    "alert": {
+      "title": "Jadwal kuliah berubah",
+      "body": "Kelas Mobile pindah ke Ruang A2 jam 13.00"
+    },
+    "sound": "default"
+  },
+  "gcm.message_id": "sim-announcement-0001",
+  "route": "/pengumuman/3",
+  "id": "3"
+}
